@@ -89,18 +89,23 @@ _mnt_fs() {
     _mnt_dev "${img_loopdev}" "${mnt}" "-r" "defaults"
 }
 
-# args: device, mountpoint, flags, opts
+# args: device, mountpoint, flags, opts, nofail
 _mnt_dev() {
     local dev="${1}"
     local mnt="${2}"
     local flg="${3}"
     local opts="${4}"
+    local nofail="${5:-n}"
     local resolved_dev rootdelay
 
     msg ":: Mounting '${dev}' to '${mnt}'"
 
     rootdelay="$(getarg rootdelay 30)"
-    while ! resolved_dev="$(resolve_device "${dev}")"; do
+    while ! resolved_dev="$(resolve_device "${dev}")" do
+        if [ "${nofail}" = "y" ]; then
+            echo "WARNING: '${dev}' device did not show up after ${rootdelay:-30} seconds, continuing without it."
+            return 1
+        fi
         echo "ERROR: '${dev}' device did not show up after ${rootdelay:-30} seconds..."
         echo "   Falling back to interactive prompt"
         echo "   You can try to fix the problem manually, log out when you are finished"
@@ -115,6 +120,10 @@ _mnt_dev() {
     if mount --mkdir -o "x-initrd.mount,${opts}" "${flg}" "${dev}" "${mnt}"; then
         msg ":: Device '${dev}' mounted successfully."
     else
+        if [ "${nofail}" = "y" ]; then
+            echo "WARNING: Failed to mount '${dev}', continuing without it."
+            return 1
+        fi
         echo "ERROR; Failed to mount '${dev}'"
         echo "   Falling back to interactive prompt"
         echo "   You can try to fix the problem manually, log out when you are finished"
@@ -238,6 +247,8 @@ run_hook() {
 
     cow_label="$(getarg 'cow_label')"
     cow_device="$(getarg 'cow_device')"
+    cow_nofail="$(getarg 'cow_nofail' 'n')"
+
     if [ -n "${cow_label}" ]; then
         cow_device="$(getarg 'cow_device' "/dev/disk/by-label/${cow_label}")"
         cow_persistent="$(getarg 'cow_persistent' 'P')"
@@ -358,9 +369,14 @@ archiso_mount_handler() {
     if [ -n "${cow_device}" ]; then
         # Mount cow_device read-only at first and remount it read-write right after. This prevents errors when the
         # device is already mounted read-only somewhere else (e.g. if cow_device and archisodevice are the same).
-        _mnt_dev "${cow_device}" "/run/archiso/cowspace" "-r" "${cow_flags}"
-        mount -o x-initrd.mount,remount,rw "/run/archiso/cowspace"
-    else
+        if _mnt_dev "${cow_device}" "/run/archiso/cowspace" "-r" "${cow_flags}" "${cow_nofail}"; then
+            mount -o x-initrd.mount,remount,rw "/run/archiso/cowspace"
+        elif [ "${cow_nofail}" = "y" ]; then
+            msg ":: cow device unavailable, falling back to tmpfs cowspace."
+            cow_device=""
+        fi
+    fi
+    if [ -z "${cow_device}" ]; then
         msg ":: Mounting /run/archiso/cowspace (tmpfs) filesystem, size=${cow_spacesize}..."
         mount --mkdir -t tmpfs -o "x-initrd.mount,size=${cow_spacesize}",mode=0755 cowspace /run/archiso/cowspace
     fi

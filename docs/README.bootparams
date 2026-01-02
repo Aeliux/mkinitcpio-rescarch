@@ -54,6 +54,9 @@ INDEX
                          Default: (unset)
 * cow_device=            Like cow_label= but using device node.
                          Default: (unset) or "/dev/disk/by-label/${cow_label}"
+* cow_nofail=            If set to "y", boot will continue with tmpfs fallback
+                         if cow_device is not found or fails to mount.
+                         Default: "n"
 * cow_flags=             Set extra mount options, e.g. for btrfs subvolumes.
                          Default: defaults
 * cow_directory=         Set a directory inside ${cow_device}.

@@ -2,23 +2,14 @@
 Changelog
 #########
 
-[XX] - YYYY-MM-DD
-=================
+[73-1] - 2026-01-02
+===================
 
 Added
 -----
 
-Changed
--------
-
-Deprecated
-----------
-
-Fixed
------
-
-Removed
--------
+- Add ``cow_nofail`` boot parameter to allow boot to continue with tmpfs fallback when the COW device
+  is not found or fails to mount, instead of dropping to an interactive shell.
 
 [73] - 2025-11-17
 =================
