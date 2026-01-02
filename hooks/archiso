@@ -101,7 +101,7 @@ _mnt_dev() {
     msg ":: Mounting '${dev}' to '${mnt}'"
 
     rootdelay="$(getarg rootdelay 30)"
-    while ! resolved_dev="$(resolve_device "${dev}")" do
+    while ! resolved_dev="$(resolve_device "${dev}")"; do
         if [ "${nofail}" = "y" ]; then
             echo "WARNING: '${dev}' device did not show up after ${rootdelay:-30} seconds, continuing without it."
             return 1
